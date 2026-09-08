@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask
+from flask_cors import CORS
 
 import config
 from routes import router
@@ -19,6 +20,7 @@ if not agencia_config:
     sys.exit(1)
 
 app = Flask(__name__)
+CORS(app)
 app.config["ESTADO"] = {
     "id_agencia": id_agencia,
     "relogio": RelogioLamport(),

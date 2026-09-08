@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fundo: #0e0e11;
+  --color-fundo-2: #151519;
+  --color-superficie: #1b1b20;
+  --color-borda: rgba(255, 255, 255, 0.08);
+  --color-roxo: #ab9ff2;
+  --color-roxo-forte: #8a7cf0;
+  --color-roxo-suave: #c9c0ff;
+  --color-texto: #ffffff;
+  --color-texto-fraco: #a6a6b0;
+  --color-erro: #ff6b6b;
+  --color-ok: #4ade80;
+
+  --font-sans: var(--fonte-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl2: 1.75rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+::selection {
+  background: var(--color-roxo);
+  color: #14121c;
+}
+
+.brilho-roxo {
+  background: radial-gradient(50% 50% at 50% 0%, rgba(171, 159, 242, 0.25), transparent 70%);
+}
+
+@keyframes flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+.flutuar {
+  animation: flutuar 6s ease-in-out infinite;
+}
+
+@keyframes deslizar {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee {
+  animation: deslizar 22s linear infinite;
+}
