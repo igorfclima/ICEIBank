@@ -20,6 +20,6 @@ class RegistroEventos:
             "detalhes": detalhes,
         }
         with open(self.caminho_arquivo, "a", encoding="utf-8") as f:
-            f.write(json.dumps(evento) + "\n")
-        print(f"[Lamport {timestamp_lamport}] {tipo}", detalhes)
+            f.write(json.dumps(evento, ensure_ascii=False) + "\n")
+        print(f"[Lamport {timestamp_lamport}] {tipo} {detalhes}")
         return evento

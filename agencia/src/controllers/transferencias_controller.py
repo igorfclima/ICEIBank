@@ -43,6 +43,7 @@ def transferir():
         resp = requests.post(
             f"{url_destino}/contas/{id_destino}/creditar-remoto",
             json={"valor": valor, "timestampLamport": ts_envio, "origemAgencia": estado["id_agencia"]},
+            headers={"Authorization": request.headers.get("Authorization", "")},
             timeout=5,
         )
         resp.raise_for_status()
