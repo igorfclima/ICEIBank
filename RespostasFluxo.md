@@ -14,3 +14,28 @@ A origem é verificada se existe, origem inicia a transação, iniciao o timesta
 
 ### 5. Mensageria e comunicação indireta
 
+Produtor -> Agencia após o debito
+Canal -> Topico por agencia
+Consumidor -> Agencia de destino
+
+Mensagem = id,origem,timestamp,destino e valor.
+
+### 6. Entrega, duplicidade e processamento de mensagens
+
+Se envia uma mensagem de transação sem id 2 vezes o valor pode ser debitado 2 vezes ou quebrar o extrato com 1 transação falsa. Seria necessário um id unico de transação que após o recebimento da 1 fosse destruido.
+
+### 7. Eventos concorrentes e ordenação causal
+
+2 agencias fizeram transferencias entre si, a mensagem chegou na outra após o envio da propria.
+
+### 8. Relógio vetorial na aplicação
+
+Cada agencia possui um vetor de n agencias. 
+
+### 9. Consistência e observabilidade dos eventos
+
+Hoje é enviado variaveis separadas e inteiros, poderia trocar para um vetor completo com as informações assim podendo ser comparado e evitando duplicidade.
+
+### 10. Proposta de evolução para a próxima implementação
+
+Provavelmente teria que mudar na tranferencias entre agencias, inserir mensageria entre as n agencias.
