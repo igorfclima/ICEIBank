@@ -76,7 +76,7 @@ O Model é o lib/session.ts, que guarda token e agência de entrada no localStor
 
 ## Funcionalidade adicional: histórico de transações por conta
 
-O endpoint GET /contas/id/historico, protegido por JWT, lista os últimos eventos registrados para uma conta, do mais recente para o mais antigo, com tipo, vetor de relógio, hora e detalhes de cada um. O parâmetro limite define quantos eventos retornar, com padrão 10 e máximo 100. Os eventos vêm do próprio log da agência, filtrados pelo papel da conta em cada tipo de evento, por exemplo o débito aparece para a conta de origem e o crédito para a de destino. Com a persistência desligada só entram eventos registrados desde que a agência subiu, para que uma conta recriada após um reinício não herde o histórico de uma conta anterior de mesmo número, e com ela ligada o histórico atravessa reinícios porque a conta também atravessa. Escolhi essa funcionalidade porque aproveita o registro de eventos que já existe por causa do relógio lógico, dá ao correntista um extrato sem criar armazenamento novo e deixa visível a ordem das operações.
+O endpoint GET /contas/id/historico, protegido por JWT, lista os últimos eventos da conta, do mais recente para o mais antigo, com limite padrão de 10 e máximo de 100. Os eventos vêm do log da agência, filtrados pelo papel da conta em cada um, então o débito aparece para a origem e o crédito para o destino. Escolhi essa funcionalidade porque aproveita o registro de eventos que já existe e dá um extrato sem criar armazenamento novo.
 
 # Sprint 2
 
@@ -84,56 +84,50 @@ O endpoint GET /contas/id/historico, protegido por JWT, lista os últimos evento
 
 **1. O que acontece com o vetor se o sistema crescer para 10 agências?**
 
-Cada vetor passa a ter 10 posições e cada mensagem carrega 10 inteiros, ou seja, o tamanho cresce linearmente com o número de processos. Com 10 agências não é problema, mas com milhares o custo por mensagem e por evento registrado ficaria alto, e todo processo precisaria conhecer de antemão todos os participantes. Nesses casos se usam variações como vetores esparsos.
+Cada vetor passa a ter 10 posições e cada mensagem carrega 10 inteiros, então o custo cresce linearmente com o número de agências. Com 10 não é problema, mas com milhares seria.
 
 **2. V1 igual a 3,1,0 e V2 igual a 3,2,0. Qual veio primeiro?**
 
-O evento de V1 aconteceu antes do de V2. Na posição 0 os valores são iguais, na posição 1 V1 tem 1 e V2 tem 2, e na posição 2 são iguais. Como V1 é menor ou igual a V2 em todas as posições e diferente em pelo menos uma, V1 precede V2.
+V1 veio antes. Ele é menor ou igual a V2 em todas as posições e menor na posição 1, com 1 contra 2.
 
 **3. V1 igual a 3,1,0 e V2 igual a 1,3,0. Qual veio primeiro?**
 
-São concorrentes. Na posição 0 V1 é maior, 3 contra 1, e na posição 1 V2 é maior, 3 contra 1. Nenhum vetor é menor ou igual ao outro em todas as posições, então nenhum evento pode ter influenciado o outro.
+São concorrentes. V1 é maior na posição 0 e V2 é maior na posição 1, então nenhum domina o outro e nenhum pode ter influenciado o outro.
 
 ## Parte C: Publish/Subscribe entre agências
 
 **1. O que aconteceu quando a Agência 1 voltou?**
 
-Com a Agência 1 fora do ar a transferência foi publicada normalmente e a fila fila-agencia-1 reteve a mensagem, já que fila e mensagem são duráveis. Ao reiniciar, a agência reconectou ao broker e recebeu a mensagem, e o consumidor atualizou o relógio com ao_receber. O resultado depende de as contas estarem ou não persistidas. No cenário do roteiro, com PERSISTENCIA igual a 0, a conta 1 não existia mais, porque as contas ficavam apenas na memória do processo e o reinício apagou tudo, então o consumidor registrou CREDITO_REMOTO_FALHOU com o motivo conta nao encontrada e a mensagem foi desviada para a fila de mensagens mortas. A mensagem não sumiu por falha da mensageria, foi entregue corretamente, e o problema foi de estado e não de entrega. Com a persistência ligada, que é o padrão atual, a conta voltou do disco junto com o relógio vetorial e o crédito foi aplicado normalmente após o reinício.
+A fila reteve a mensagem enquanto a agência estava fora, e ao voltar ela foi entregue. Com as contas só em memória, que é o cenário do roteiro e corresponde a PERSISTENCIA igual a 0, a conta 1 não existia mais, então o consumidor registrou CREDITO_REMOTO_FALHOU e a mensagem foi para a fila de mortas. A mensageria não falhou, o problema foi de estado. Com a persistência ligada, que é o padrão, a conta voltou do disco e o crédito foi aplicado.
 
 **2. O que melhorou em relação ao Sprint 1 e o que continua em aberto?**
 
-Melhorou que a origem não depende do destino estar no ar nem espera a resposta dele e que a mensagem fica retida até ser consumida. Também melhorou que o débito e a intenção de publicar são gravados juntos no mesmo instantâneo em disco, como numa caixa de saída: se o broker estiver indisponível ou o processo cair antes de publicar, a transferência fica pendente e é republicada sozinha quando o broker volta, e o consumidor descarta reenvios repetidos pelo id da transferência. Continua em aberto que não perder a mensagem não significa que o sistema está correto. Se o destino rejeita o crédito, por exemplo porque a conta não existe, o débito já aplicado na origem permanece e a mensagem fica parada na fila de mortas, sem estorno automático. Desfazer o débito de forma coordenada exige um protocolo de compensação ou de transação distribuída, que é o tema do Sprint 4.
+Melhorou que a origem não depende do destino estar no ar e que a mensagem fica retida até ser consumida. Continua em aberto que não perder a mensagem não garante que o sistema esteja correto: se o destino rejeita o crédito, o débito na origem permanece e a mensagem fica parada na fila de mortas, sem estorno. Corrigir isso exige transação distribuída, que é o tema do Sprint 4.
 
 **3. O consumidor processar créditos sem verificar JWT é um problema de segurança?**
 
-Era um problema. O JWT protege apenas a porta HTTP, e o consumidor aceitava qualquer mensagem que chegasse na fila, de modo que quem tivesse a URL AMQP, que contém usuário e senha da instância, conseguia publicar um crédito para qualquer conta e criar dinheiro sem nunca ter feito login. Agora cada mensagem viaja em um envelope assinado com HMAC SHA-256 usando um segredo compartilhado entre as agências, e o consumidor verifica a assinatura antes de mexer no relógio ou no saldo. No teste, mensagens sem assinatura e com assinatura errada foram rejeitadas, registraram MENSAGEM_INVALIDA, não alteraram o saldo e foram para a fila de mortas. O risco que sobra é o segredo ser compartilhado, então quem o conhece ou uma agência comprometida ainda consegue forjar mensagens, e o ideal seria uma chave por agência com permissões separadas no broker.
+Era. O JWT protege só a porta HTTP, então quem tivesse a URL AMQP publicava um crédito para qualquer conta sem fazer login. Agora cada mensagem é assinada com HMAC e o consumidor rejeita as sem assinatura válida, o que foi confirmado no teste. O risco que resta é o segredo ser compartilhado entre as agências.
 
 ## Parte D: Linha do tempo causal
 
 **1. O que torna a comparação confiável no relógio vetorial?**
 
-O vetor guarda um contador por agência, então registra quanto cada processo já viu. Isso permite comparar posição a posição: se um vetor é menor ou igual ao outro em todas as posições, o primeiro evento está na história causal do segundo, e se cada um é maior em alguma posição, nenhum conhecia o outro. No Lamport todo o histórico é resumido em um único inteiro, por isso um número menor não prova causalidade. No vetor a relação vale nos dois sentidos.
+O vetor guarda um contador por agência, então dá para comparar posição a posição. Se um é menor ou igual ao outro em todas as posições, houve causalidade, e se cada um é maior em alguma posição, são concorrentes. No Lamport um único inteiro não permite concluir isso.
 
 **2. Par de eventos concorrentes encontrado no teste.**
 
-O script apontou como concorrentes o CRIAR_CONTA da Agência 0, vetor 1,0,0, e o CRIAR_CONTA da Agência 1, vetor 0,1,0. Faz sentido, porque cada agência criou uma conta local sem trocar nenhuma mensagem com a outra, então nenhum evento chegou a conhecer o outro. Já o débito da Agência 0, vetor 2,0,0, e o crédito remoto da Agência 1, vetor 3,2,0, não apareceram na lista, pois o primeiro é menor ou igual ao segundo em todas as posições, o que reflete a causalidade real, já que o crédito só existe porque o débito publicou a mensagem.
+O CRIAR_CONTA da Agência 0, vetor 1,0,0, e o CRIAR_CONTA da Agência 1, vetor 0,1,0. Faz sentido porque cada agência criou uma conta local sem trocar mensagem com a outra. Já o débito e o crédito remoto da transferência não apareceram como concorrentes, porque o crédito só existe por causa do débito.
 
 **3. O algoritmo quadrático seria um problema com milhões de eventos?**
 
-Seria, já que compara todos os pares e chegaria a trilhões de comparações. Dentro de uma mesma agência os eventos já são totalmente ordenados pelo próprio contador, então bastaria comparar cada evento com o último evento conhecido de cada outra agência, o que reduz o custo para o número de eventos vezes o número de agências. Também seria possível analisar apenas janelas de tempo, processar o fluxo de eventos de forma contínua em vez de em lote, ou comparar sob demanda só os pares que interessam.
+Seria, porque compara todos os pares. Dentro de uma agência os eventos já são ordenados pelo contador, então bastaria comparar cada evento com o último de cada outra agência, ou analisar apenas janelas de tempo.
 
 ## Funcionalidade adicional: fila de mensagens mortas
 
-Cada fila de agência foi declarada com uma dead-letter exchange, a iceibank.mortas, que entrega na fila fila-mortas. Quando o consumidor não consegue aplicar um crédito, como no caso de conta inexistente, ele registra o evento CREDITO_REMOTO_FALHOU e rejeita a mensagem sem devolvê-la à fila, e o RabbitMQ a desvia para fila-mortas junto com o motivo da rejeição. Escolhi essa funcionalidade porque ela resolve o problema que o próprio teste de resiliência expõe: antes a mensagem seria descartada e o valor se perderia sem rastro, e agora ela fica retida para inspeção ou reprocessamento manual. No teste a fila de mortas passou de 0 para 1 mensagem, preservando o id da transferência, a conta, o valor e o vetor de envio.
+As filas das agências desviam para a fila fila-mortas as mensagens que o consumidor não consegue aplicar, como um crédito para conta inexistente, junto com o motivo da rejeição. Escolhi essa funcionalidade porque ela resolve o problema exposto pelo teste de resiliência: em vez de o valor se perder sem rastro, a mensagem fica retida para inspeção. No teste a fila de mortas foi de 0 para 1 mensagem, com o payload preservado.
 
 ## Decisões de projeto além do roteiro
 
-Cada transferência recebe um idTransferencia, um UUID gerado na origem que acompanha os eventos de débito, publicação e crédito. O consumidor guarda os ids já aplicados e descarta reentregas, registrando CREDITO_REMOTO_DUPLICADO, e no teste a mesma mensagem publicada duas vezes, inclusive depois de reiniciar a agência, creditou uma só vez.
+Cada transferência tem um idTransferencia, e o consumidor descarta mensagens repetidas com esse id, o que foi testado inclusive depois de reiniciar a agência. O estado de cada agência, incluindo o vetor do relógio, é gravado em disco a cada operação, e a variável PERSISTENCIA igual a 0 desliga isso para reproduzir o cenário do roteiro. O débito e a mensagem pendente são gravados juntos, e uma thread republica o que sobrar, então a transferência não se perde se o broker estiver fora ou o processo cair.
 
-O estado de cada agência, formado por contas, ids processados, transferências pendentes e vetor do relógio, é gravado em data/estado-agencia-N.json a cada operação, de forma atômica. Persistir o vetor foi necessário porque, sem isso, um reinício zeraria o contador da própria agência e quebraria a ordem causal dos eventos. A persistência vem ligada por padrão e a variável PERSISTENCIA igual a 0 a desliga para reproduzir o cenário do roteiro. A transferência remota usa o padrão de caixa de saída: o débito e a mensagem pendente são gravados juntos, a publicação é tentada em seguida e uma thread republica o que sobrou, com resposta 202 e status pendente quando o broker está fora. Como a entrega é pelo menos uma vez e o consumidor é idempotente, o efeito final é um só crédito.
-
-A autorização, que no Sprint 1 era o ponto em aberto da pergunta 1 da Parte F, foi implementada. Existem dois papéis, operador e cliente, e cada conta tem um dono. Operador acessa qualquer conta e cria contas para outros usuários, enquanto cliente só consulta, deposita, saca, transfere a partir da própria conta e vê o próprio histórico, com resposta 403 nos demais casos. Receber uma transferência não exige ser dono do destino. Os usuários ficam em config.py, com admin como operador e ana, beto e caio como clientes de demonstração.
-
-Os eventos passaram a ter idEvento e são publicados em uma fila de auditoria, consumida pelo script auditoria.py, que grava um log central em data/auditoria.jsonl sem duplicar eventos. Se a agência cair antes de publicar, os eventos do log local posteriores ao último publicado são reenviados na subida, e no teste todos os 24 eventos locais apareceram no log central. O comando mesclar_logs com a opção central lê esse log único, e sem a opção continua mesclando os arquivos de cada agência.
-
-Como o Flask atende requisições em várias threads e o consumidor roda em outra, o estado das agências é protegido por uma trava, e a mesma trava dispara a gravação em disco ao fim de cada operação.
+Foi implementada autorização com dois papéis, operador e cliente, e cada conta tem um dono. O cliente só acessa as próprias contas e recebe 403 nas demais, e receber transferência não exige ser dono do destino. Os eventos também são publicados em uma fila de auditoria, e o script auditoria.py monta um log central, lido por mesclar_logs com a opção central. Por fim, o Flask atende em várias threads, então o estado é protegido por uma trava.
