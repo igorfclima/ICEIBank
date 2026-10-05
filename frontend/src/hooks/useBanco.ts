@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ErroApi } from "@/lib/api";
 import { sessao, type Conta } from "@/lib/session";
 
+const TITULOS_TRANSFERENCIA = {
+  concluida: "Transferência concluída",
+  publicada: "Transferência enviada",
+  pendente: "Transferência aceita",
+};
+
 export type Aviso = { tipo: "erro" | "ok"; texto: string } | null;
 export type Resultado = { tipo: "erro" | "ok"; titulo: string; texto: string } | null;
 
@@ -113,7 +119,7 @@ export function useBanco() {
         const r = await api.transferir(agenciaId, origem, destino, valor);
         setResultado({
           tipo: "ok",
-          titulo: "Transferência concluída",
+          titulo: TITULOS_TRANSFERENCIA[r.status],
           texto: `${r.mensagem} (origem ${origem} → destino ${destino}, ${valor})`,
         });
         if (conta?.id === origem) await consultar(origem);

@@ -6,6 +6,9 @@ venv/
 
 # Dados de execucao
 agencia/data/*.jsonl
+agencia/data/*.json
+agencia/data/*.tmp
+agencia/data/*.txt
 
 # Sistema
 Thumbs.db

@@ -55,7 +55,7 @@ export const api = {
     });
   },
   transferir(agenciaId: number, idOrigem: number, idDestino: number, valor: number) {
-    return requisitar<{ mensagem: string }>(agenciaId, "/transferencias", {
+    return requisitar<{ mensagem: string; status: "concluida" | "publicada" | "pendente" }>(agenciaId, "/transferencias", {
       method: "POST",
       body: JSON.stringify({ idOrigem, idDestino, valor }),
     });

@@ -2,15 +2,16 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import jwt
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 import config
 
 
-def gerar_token(usuario):
+def gerar_token(usuario, papel):
     agora = datetime.now(timezone.utc)
     payload = {
         "sub": usuario,
+        "papel": papel,
         "iat": agora,
         "exp": agora + timedelta(seconds=config.JWT_EXPIRACAO_SEGUNDOS),
     }
@@ -28,9 +29,15 @@ def requer_autenticacao(view):
         if not cabecalho.startswith("Bearer "):
             return jsonify({"erro": "Token ausente."}), 401
         try:
-            validar_token(cabecalho[7:])
+            payload = validar_token(cabecalho[7:])
         except jwt.PyJWTError:
             return jsonify({"erro": "Token inválido ou expirado."}), 401
+        g.usuario = payload["sub"]
+        g.papel = payload.get("papel")
         return view(*args, **kwargs)
 
     return wrapper
+
+
+def pode_acessar(conta):
+    return g.papel == "operador" or conta.get("dono") == g.usuario

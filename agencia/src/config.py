@@ -11,11 +11,16 @@ AGENCIAS = [
     {"id": 2, "url": f"http://localhost:{PORTA_BASE + 2}"},
 ]
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "iceibank-sprint1-segredo")
+JWT_SECRET = os.environ.get("JWT_SECRET", "iceibank-segredo-de-assinatura-jwt-2026")
 JWT_EXPIRACAO_SEGUNDOS = int(os.environ.get("JWT_EXP", "3600"))
 
+SEGREDO_MENSAGENS = os.environ.get("SEGREDO_MENSAGENS", "iceibank-segredo-de-assinatura-das-mensagens-2026")
+
 USUARIOS = {
-    os.environ.get("USUARIO", "admin"): os.environ.get("SENHA", "admin"),
+    os.environ.get("USUARIO", "admin"): {"senha": os.environ.get("SENHA", "admin"), "papel": "operador"},
+    "ana": {"senha": "ana123", "papel": "cliente"},
+    "beto": {"senha": "beto123", "papel": "cliente"},
+    "caio": {"senha": "caio123", "papel": "cliente"},
 }
 
 

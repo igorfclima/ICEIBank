@@ -30,7 +30,7 @@ export function Login({
       </Link>
       <div className="rounded-xl2 border border-borda bg-superficie p-8 shadow-2xl">
         <Marca className="text-xl" />
-        <p className="mt-1 mb-7 text-sm text-texto-fraco">Acesso do operador de agência</p>
+        <p className="mt-1 mb-7 text-sm text-texto-fraco">Acesso à agência</p>
 
         <label className="mb-4 flex flex-col gap-1.5 text-xs text-texto-fraco">
           Agência
