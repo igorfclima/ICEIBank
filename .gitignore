@@ -10,6 +10,8 @@ agencia/data/*.json
 agencia/data/*.tmp
 agencia/data/*.txt
 
+.env
+
 # Sistema
 Thumbs.db
 desktop.ini

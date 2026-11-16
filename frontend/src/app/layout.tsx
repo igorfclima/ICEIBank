@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Archivo, Courier_Prime } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const archivo = Archivo({
   subsets: ["latin"],
-  variable: "--fonte-inter",
-  weight: ["400", "500", "600", "700", "800"],
+  variable: "--fonte-archivo",
+  axes: ["wdth"],
+});
+
+const serie = Courier_Prime({
+  subsets: ["latin"],
+  variable: "--fonte-serie",
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "ICEIBank — o único banco que você vai precisar",
+  title: "ICEIBank",
   description:
-    "Deposite, saque, transfira e acompanhe seu dinheiro em tempo real, em qualquer agência do ICEIBank.",
+    "Banco didático em três agências: liderança eleita entre elas, relógio vetorial em cada lançamento e operação offline que sincroniza sozinha.",
 };
 
 export default function RootLayout({
@@ -19,7 +25,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.variable}>{children}</body>
+      <body className={`${archivo.variable} ${serie.variable}`}>{children}</body>
     </html>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AGENCIAS } from "@/lib/config";
 import { Marca } from "@/components/Marca";
-import { Banner, Botao, Campo } from "./ui";
+import { Banner, Botao, Campo } from "@/components/compartilhado/ui";
 import type { Aviso } from "@/hooks/useBanco";
 
 export function Login({
@@ -20,58 +20,55 @@ export function Login({
   onTrocarAgencia: (id: number) => void;
   onEntrar: (usuario: string, senha: string) => void;
 }) {
-  const [usuario, setUsuario] = useState("admin");
+  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-16">
-      <Link href="/" className="mb-8 self-start text-sm text-texto-fraco hover:text-texto">
-        ← voltar ao site
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
+      <Link href="/" className="mb-8 self-start text-sm text-tinta-2 underline underline-offset-4">
+        Voltar ao site
       </Link>
-      <div className="rounded-xl2 border border-borda bg-superficie p-8 shadow-2xl">
-        <Marca className="text-xl" />
-        <p className="mt-1 mb-7 text-sm text-texto-fraco">Acesso à agência</p>
+      <div className="border border-regua">
+        <div className="bg-ativa px-6 py-4 text-sobre-ativa">
+          <Marca className="text-xl" pontos={false} />
+        </div>
+        <form
+          className="p-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onEntrar(usuario, senha);
+          }}
+        >
+          <h1 className="manchete mb-6">Entrar</h1>
 
-        <label className="mb-4 flex flex-col gap-1.5 text-xs text-texto-fraco">
-          Agência
-          <select
-            value={agenciaId}
-            onChange={(e) => onTrocarAgencia(Number(e.target.value))}
-            className="w-full rounded-xl border border-borda bg-white/[0.03] px-3.5 py-3 text-[15px] text-texto outline-none focus:border-roxo"
-          >
-            {AGENCIAS.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="mb-4 flex flex-col gap-1">
+            <span className="rotulo">Agência de entrada</span>
+            <select
+              value={agenciaId}
+              onChange={(e) => onTrocarAgencia(Number(e.target.value))}
+              className="min-h-12 w-full rounded-xs border border-tinta-2 bg-papel px-3 text-base"
+            >
+              {AGENCIAS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.rotulo}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <Campo
-          rotulo="Usuário"
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
-          autoComplete="username"
-        />
-        <Campo
-          rotulo="Senha"
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onEntrar(usuario, senha)}
-          autoComplete="current-password"
-          placeholder="••••••"
-        />
+          <Campo rotulo="Usuário" value={usuario} onChange={(e) => setUsuario(e.target.value)} autoComplete="username" />
+          <Campo rotulo="Senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" />
 
-        <Botao disabled={ocupado} onClick={() => onEntrar(usuario, senha)}>
-          {ocupado ? "Entrando…" : "Entrar"}
-        </Botao>
+          <Botao type="submit" disabled={ocupado || usuario === "" || senha === ""}>
+            {ocupado ? "Entrando…" : "Entrar"}
+          </Botao>
 
-        {aviso && (
-          <div className="mt-4">
-            <Banner tipo={aviso.tipo}>{aviso.texto}</Banner>
-          </div>
-        )}
+          {aviso && (
+            <div className="mt-4">
+              <Banner tipo={aviso.tipo}>{aviso.texto}</Banner>
+            </div>
+          )}
+        </form>
       </div>
     </div>
   );

@@ -131,3 +131,89 @@ As filas das agências desviam para a fila fila-mortas as mensagens que o consum
 Cada transferência tem um idTransferencia, e o consumidor descarta mensagens repetidas com esse id, o que foi testado inclusive depois de reiniciar a agência. O estado de cada agência, incluindo o vetor do relógio, é gravado em disco a cada operação, e a variável PERSISTENCIA igual a 0 desliga isso para reproduzir o cenário do roteiro. O débito e a mensagem pendente são gravados juntos, e uma thread republica o que sobrar, então a transferência não se perde se o broker estiver fora ou o processo cair.
 
 Foi implementada autorização com dois papéis, operador e cliente, e cada conta tem um dono. O cliente só acessa as próprias contas e recebe 403 nas demais, e receber transferência não exige ser dono do destino. Os eventos também são publicados em uma fila de auditoria, e o script auditoria.py monta um log central, lido por mesclar_logs com a opção central. Por fim, o Flask atende em várias threads, então o estado é protegido por uma trava.
+
+# Sprint 3
+
+## Parte A: Mensagens de eleição e coordenador
+
+**1. Por que o Bully elege o maior id e não o menor?**
+
+Porque precisa ter uma regra que todo mundo conheça para saber quem ganha. Escolheram o maior. Se fosse o menor também funcionaria, só mudaria quem pergunta para quem.
+
+**2. Mais de uma agência declarar TORNOU_LIDER na subida é um bug?**
+
+Não é bug. Cada agência que sobe começa a própria eleição, e a Agência 2 recebeu várias e foi declarando líder de novo. No meu teste ela declarou três vezes em uns 1,4 segundos. No fim todas concordaram que a líder era a 2.
+
+**3. A rota de eleição sem autenticação é um problema de segurança?**
+
+É sim, porque qualquer um que souber a URL pode mandar uma líder falsa. Eu usei a assinatura HMAC do Sprint 2 nas mensagens. Quando mandei sem assinatura deu 403 e a líder não mudou.
+
+## Parte B: Heartbeat e failover automático
+
+**1. O que aconteceria com um heartbeat de 100 ms e com um de 60 segundos?**
+
+Com 100 ms ficaria perguntando toda hora e gastaria rede à toa. Com 60 segundos demoraria um minuto para perceber que a líder caiu. Por isso usei 3 segundos, que dá para mudar na variável HEARTBEAT_MS.
+
+**2. É desejável a agência que voltou tomar a liderança de volta?**
+
+Faz parte do Bully, e no teste a Agência 2 pegou a liderança de volta quando voltou. Pode dar problema se trocar de líder bem no meio de uma operação importante.
+
+**3. O que acontece se a rede estiver lenta e passar de 1 segundo?**
+
+A agência lenta parece que caiu e começa uma eleição sem precisar. Dá para aumentar o tempo na variável BULLY_TIMEOUT_MS.
+
+## Parte C: Observando a eleição
+
+**1. Quantas vezes a liderança mudou de mãos na subida e isso tem custo?**
+
+No meu teste foram três TORNOU_LIDER, todos da Agência 2. Tem custo porque cada eleição manda várias mensagens e cada uma vira evento no log, mesmo o resultado final sendo o mesmo.
+
+## Parte D: App Flutter
+
+**1. Como o app decide a frequência de consulta?**
+
+Consulta a cada 5 segundos na aba Agências e a cada 15 nas outras. Se fosse mais rápido gastaria mais bateria e internet. Se fosse mais devagar demoraria para mostrar a troca de líder.
+
+**2. O que o app faz quando duas agências respondem líderes diferentes?**
+
+Ele mostra Eleição em andamento e não escolhe nenhuma. Na próxima consulta isso se resolve sozinho.
+
+**3. O que foi reaproveitado do frontend web e o que mudou por ser mobile?**
+
+Reaproveitei a ideia do login com JWT, o tratamento do 401 e a separação entre tela e API. O que mudou foi o token ficar no armazenamento seguro do celular, as abas embaixo e a tela precisar funcionar sem internet.
+
+## Parte E: Sincronização offline-first no backend
+
+**1. Por que comparar o vetor inteiro e não só o saldo?**
+
+Porque o saldo pode ficar igual mesmo com coisas acontecendo. Um depósito e um saque do mesmo valor deixam o saldo igual, mas o vetor muda e a agência percebe.
+
+**2. Por que qualquer mudança no vetor vira conflito?**
+
+Porque o vetor é da agência e não da conta. Qualquer operação na agência mexe nele, mesmo de outra conta. Para ficar mais preciso precisaria de um vetor por conta.
+
+**3. O que o app deve fazer quando a sincronização é recusada?**
+
+Perguntar para a pessoa. O app guarda o saldo real e mostra um aviso com três opções: aplicar, descartar ou decidir depois. Não faz nada sozinho.
+
+## Parte F: App Flutter offline-first
+
+**1. Qual biblioteca de armazenamento local foi escolhida?**
+
+Escolhi o drift. Ele tem tabelas com tipo e atualiza a tela sozinho quando a fila muda. Pensei no sqflite, que é mais simples mas sem isso, e no Hive, que não filtra bem.
+
+**2. O que acontece na tela quando a sincronização é recusada com 409?**
+
+A operação fica na lista com o chip Conflito, o saldo real aparece no lugar do antigo e o botão Resolver abre uma janela com as opções. Escolhi assim porque só a pessoa sabe se ainda quer fazer a operação.
+
+**3. Qual o risco da UI otimista num app bancário e como o design o reduz?**
+
+O risco é a pessoa achar que o dinheiro já está na conta. Para reduzir, o saldo aparece escrito como provisório, o cartão fica com marca d'água e o saldo confirmado aparece logo embaixo.
+
+## Funcionalidade adicional: indicador de agências ativas
+
+O app e o web mostram quais agências estão respondendo, com Ativa, Líder ou Fora do ar. Escolhi porque usa a mesma consulta do painel de líder e mostra a queda de uma agência antes da nova eleição. No teste, quando derrubei a Agência 2, ela apareceu como Fora do ar e a líder passou a ser a 1.
+
+## Decisões de projeto além do roteiro
+
+Cada operação do app tem um idOperacao, então se a resposta se perder e o app mandar de novo, a agência não aplica duas vezes. Depois que uma operação sincroniza, as próximas da fila pegam o vetor novo, porque um teste meu mostrou que sem isso a segunda dava conflito sozinha. O app manda cada operação para a agência dona da conta, calculada por id módulo 3. A agência de entrada só serve para o login e para a cor do tema.

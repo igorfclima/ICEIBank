@@ -1,5 +1,5 @@
-import { urlDaAgencia } from "./config";
-import { sessao, type Conta } from "./session";
+import { AGENCIAS, urlDaAgencia } from "./config";
+import { sessao, type Conta, type Evento, type Lideranca } from "./session";
 
 export class ErroApi extends Error {
   status: number;
@@ -13,6 +13,7 @@ async function requisitar<T>(
   agenciaId: number,
   caminho: string,
   opcoes: RequestInit = {},
+  timeoutMs = 8000,
 ): Promise<T> {
   const cabecalhos: Record<string, string> = { "Content-Type": "application/json" };
   const token = sessao.lerToken();
@@ -20,7 +21,11 @@ async function requisitar<T>(
 
   let resposta: Response;
   try {
-    resposta = await fetch(urlDaAgencia(agenciaId) + caminho, { ...opcoes, headers: cabecalhos });
+    resposta = await fetch(urlDaAgencia(agenciaId) + caminho, {
+      ...opcoes,
+      headers: cabecalhos,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
   } catch {
     throw new ErroApi(0, "Não foi possível contatar a agência. Ela está no ar?");
   }
@@ -42,6 +47,9 @@ export const api = {
   consultarConta(agenciaId: number, id: number) {
     return requisitar<Conta>(agenciaId, `/contas/${id}`);
   },
+  historico(agenciaId: number, id: number, limite = 8) {
+    return requisitar<{ eventos: Evento[] }>(agenciaId, `/contas/${id}/historico?limite=${limite}`);
+  },
   depositar(agenciaId: number, id: number, valor: number) {
     return requisitar<Conta>(agenciaId, `/contas/${id}/depositar`, {
       method: "POST",
@@ -55,9 +63,22 @@ export const api = {
     });
   },
   transferir(agenciaId: number, idOrigem: number, idDestino: number, valor: number) {
-    return requisitar<{ mensagem: string; status: "concluida" | "publicada" | "pendente" }>(agenciaId, "/transferencias", {
-      method: "POST",
-      body: JSON.stringify({ idOrigem, idDestino, valor }),
+    return requisitar<{ mensagem: string; status: "concluida" | "publicada" | "pendente" }>(
+      agenciaId,
+      "/transferencias",
+      { method: "POST", body: JSON.stringify({ idOrigem, idDestino, valor }) },
+    );
+  },
+  async lideranca(): Promise<{ respostas: Lideranca[]; ativas: Record<number, boolean> }> {
+    const resultados = await Promise.allSettled(
+      AGENCIAS.map((a) => requisitar<Lideranca>(a.id, "/bully/lider", {}, 2000)),
+    );
+    const respostas: Lideranca[] = [];
+    const ativas: Record<number, boolean> = {};
+    resultados.forEach((r, i) => {
+      ativas[AGENCIAS[i].id] = r.status === "fulfilled";
+      if (r.status === "fulfilled") respostas.push(r.value);
     });
+    return { respostas, ativas };
   },
 };

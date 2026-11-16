@@ -1,7 +1,29 @@
 const CHAVE_TOKEN = "iceibank.token";
 const CHAVE_AGENCIA = "iceibank.agencia";
 
-export type Conta = { id: number; nomeAluno: string | null; saldo: number; dono?: string | null };
+export type Conta = {
+  id: number;
+  nomeAluno: string | null;
+  saldo: number;
+  dono?: string | null;
+  vetorAtual?: number[];
+};
+
+export type Evento = {
+  idEvento?: string;
+  agencia: string;
+  tipo: string;
+  timestampVetorial: number[];
+  horaParede: string;
+  detalhes: Record<string, unknown>;
+};
+
+export type Lideranca = {
+  idAgencia: number;
+  liderAtual: number | null;
+  desde: number | null;
+  ativas: Record<string, boolean>;
+};
 
 export const sessao = {
   lerToken(): string | null {

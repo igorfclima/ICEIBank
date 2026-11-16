@@ -1,21 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  --color-fundo: #0e0e11;
-  --color-fundo-2: #151519;
-  --color-superficie: #1b1b20;
-  --color-borda: rgba(255, 255, 255, 0.08);
-  --color-roxo: #ab9ff2;
-  --color-roxo-forte: #8a7cf0;
-  --color-roxo-suave: #c9c0ff;
-  --color-texto: #ffffff;
-  --color-texto-fraco: #a6a6b0;
-  --color-erro: #ff6b6b;
-  --color-ok: #4ade80;
+  --color-papel: #f3f2ee;
+  --color-papel-2: #eae8e1;
+  --color-tinta: #1c1b19;
+  --color-tinta-2: #5c5a55;
+  --color-regra: rgba(28, 27, 25, 0.14);
+  --color-ag0: #157a89;
+  --color-ag1: #d9a520;
+  --color-ag2: #8a5a2b;
+  --color-erro: #b3261e;
+  --color-alerta: #9a4a06;
+  --color-sucesso: #2e7d32;
 
-  --font-sans: var(--fonte-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--fonte-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-serie: var(--fonte-serie), ui-monospace, "Courier New", monospace;
 
-  --radius-xl2: 1.75rem;
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+}
+
+@theme inline {
+  --color-ativa: var(--ag-ativa);
+  --color-sobre-ativa: var(--ag-sobre);
+}
+
+:root {
+  --ag-ativa: var(--color-ag0);
+  --ag-sobre: #ffffff;
+  --rapido: 120ms;
+  --padrao: 200ms;
+  --virada: 240ms;
+}
+
+html[data-ag="0"] {
+  --ag-ativa: var(--color-ag0);
+  --ag-sobre: #ffffff;
+}
+
+html[data-ag="1"] {
+  --ag-ativa: var(--color-ag1);
+  --ag-sobre: #1c1b19;
+}
+
+html[data-ag="2"] {
+  --ag-ativa: var(--color-ag2);
+  --ag-sobre: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-ag] {
+    --ag-sobre: #141412;
+  }
+
+  :root {
+    --ag-sobre: #141412;
+    --color-papel: #141412;
+    --color-papel-2: #1f1e1b;
+    --color-tinta: #f3f2ee;
+    --color-tinta-2: #b5b2aa;
+    --color-regra: rgba(243, 242, 238, 0.14);
+    --color-ag0: #3fb0c0;
+    --color-ag1: #e6b935;
+    --color-ag2: #c68a4e;
+    --color-erro: #e5484d;
+    --color-alerta: #e08a3c;
+    --color-sucesso: #5bb960;
+  }
 }
 
 * {
@@ -27,34 +78,98 @@ html {
 }
 
 body {
-  background: var(--color-fundo);
-  color: var(--color-texto);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
   margin: 0;
+  background: var(--color-papel);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--color-roxo);
-  color: #14121c;
+  background: var(--ag-ativa);
+  color: var(--ag-sobre);
 }
 
-.brilho-roxo {
-  background: radial-gradient(50% 50% at 50% 0%, rgba(171, 159, 242, 0.25), transparent 70%);
+:focus-visible {
+  outline: 2px solid var(--color-tinta);
+  outline-offset: 2px;
 }
 
-@keyframes flutuar {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-14px); }
-}
-.flutuar {
-  animation: flutuar 6s ease-in-out infinite;
+.rotulo {
+  font-stretch: 75%;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-tinta-2);
 }
 
-@keyframes deslizar {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+.display {
+  font-stretch: 112%;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 40px;
+  letter-spacing: -0.01em;
 }
-.marquee {
-  animation: deslizar 22s linear infinite;
+
+.manchete {
+  font-stretch: 100%;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+.titulo {
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.serie {
+  font-family: var(--font-serie);
+  font-size: 13px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.regua {
+  border-color: var(--color-regra);
+}
+
+.marca-dagua {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-regra) 0,
+    var(--color-regra) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+}
+
+@keyframes virar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.virar {
+  animation: virar var(--virada) cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .virar {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }
