@@ -3,19 +3,11 @@ import json
 import os
 import sys
 
-PASTA_DADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+BASE = os.path.dirname(os.path.abspath(__file__))
+PASTA_DADOS = os.path.join(BASE, "data")
+sys.path.insert(0, os.path.join(BASE, "src"))
 
-
-def comparar_vetores(v1, v2):
-    v1_menor_ou_igual = all(a <= b for a, b in zip(v1, v2))
-    v2_menor_ou_igual = all(b <= a for a, b in zip(v1, v2))
-    if v1_menor_ou_igual and v2_menor_ou_igual:
-        return "IGUAIS"
-    if v1_menor_ou_igual:
-        return "ANTES"
-    if v2_menor_ou_igual:
-        return "DEPOIS"
-    return "CONCORRENTES"
+from services.comparar_vetores import comparar_vetores
 
 
 padrao = "auditoria.jsonl" if "--central" in sys.argv else "eventos-*.jsonl"

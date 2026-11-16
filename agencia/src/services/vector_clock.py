@@ -7,6 +7,10 @@ class RelogioVetorial:
         self.vetor = [0] * numero_agencias
         self._trava = threading.Lock()
 
+    def obter_vetor_atual(self):
+        with self._trava:
+            return list(self.vetor)
+
     def evento_local(self):
         with self._trava:
             self.vetor[self.id_agencia] += 1

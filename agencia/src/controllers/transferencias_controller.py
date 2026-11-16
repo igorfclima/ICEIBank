@@ -10,23 +10,25 @@ from services.auth import pode_acessar
 
 def transferir():
     estado = current_app.config["ESTADO"]
-    contas = estado["contas"]
     dados = request.get_json(silent=True) or {}
-    id_origem = dados.get("idOrigem")
-    id_destino = dados.get("idDestino")
-    valor = dados.get("valor")
+    corpo, codigo = executar_transferencia(estado, dados.get("idOrigem"), dados.get("idDestino"), dados.get("valor"))
+    return jsonify(corpo), codigo
+
+
+def executar_transferencia(estado, id_origem, id_destino, valor):
+    contas = estado["contas"]
     id_transferencia = str(uuid.uuid4())
 
     with estado["trava"]:
         conta_origem = contas.get(id_origem)
         if not conta_origem:
-            return jsonify({"erro": "Conta de origem não encontrada nesta agência."}), 404
+            return {"erro": "Conta de origem não encontrada nesta agência."}, 404
         if not pode_acessar(conta_origem):
-            return jsonify({"erro": "Sem permissão para esta conta."}), 403
+            return {"erro": "Sem permissão para esta conta."}, 403
         if not isinstance(valor, (int, float)) or valor <= 0:
-            return jsonify({"erro": "Valor inválido."}), 400
+            return {"erro": "Valor inválido."}, 400
         if conta_origem["saldo"] < valor:
-            return jsonify({"erro": "Saldo insuficiente."}), 400
+            return {"erro": "Saldo insuficiente."}, 400
 
         agencia_destino = config.agencia_responsavel(id_destino)
 
@@ -38,11 +40,11 @@ def transferir():
             conta_destino = contas.get(id_destino)
             if not conta_destino:
                 conta_origem["saldo"] += valor
-                return jsonify({"erro": "Conta de destino não encontrada."}), 404
+                return {"erro": "Conta de destino não encontrada."}, 404
             vetor_credito = estado["relogio"].evento_local()
             conta_destino["saldo"] += valor
             estado["registro"].registrar("TRANSFERENCIA_CREDITO", vetor_credito, {"idTransferencia": id_transferencia, "idOrigem": id_origem, "idDestino": id_destino, "valor": valor})
-            return jsonify({"mensagem": "Transferência concluída (mesma agência).", "status": "concluida", "idTransferencia": id_transferencia})
+            return {"mensagem": "Transferência concluída (mesma agência).", "status": "concluida", "idTransferencia": id_transferencia}, 200
 
         estado["pendentes"][id_transferencia] = {
             "agenciaDestino": agencia_destino,
@@ -58,11 +60,11 @@ def transferir():
         estado["em_envio"].add(id_transferencia)
 
     if enviar_pendente(estado, id_transferencia, reservada=True):
-        return jsonify({"mensagem": "Transferência publicada para a agência de destino (entrega assíncrona).", "status": "publicada", "idTransferencia": id_transferencia})
+        return {"mensagem": "Transferência publicada para a agência de destino (entrega assíncrona).", "status": "publicada", "idTransferencia": id_transferencia}, 200
 
     with estado["trava"]:
         estado["registro"].registrar("TRANSFERENCIA_PENDENTE", estado["relogio"].evento_local(), {"idTransferencia": id_transferencia, "idOrigem": id_origem, "idDestino": id_destino, "valor": valor})
-    return jsonify({"mensagem": "Broker indisponível. Transferência aceita e será publicada assim que o broker voltar.", "status": "pendente", "idTransferencia": id_transferencia}), 202
+    return {"mensagem": "Broker indisponível. Transferência aceita e será publicada assim que o broker voltar.", "status": "pendente", "idTransferencia": id_transferencia}, 202
 
 
 def enviar_pendente(estado, id_transferencia, reservada=False):
