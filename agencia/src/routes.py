@@ -1,6 +1,6 @@
 from flask import Blueprint
 
-from controllers import auth_controller, contas_controller, transferencias_controller
+from controllers import auth_controller, bully_controller, contas_controller, transferencias_controller
 from services.auth import requer_autenticacao
 
 router = Blueprint("router", __name__)
@@ -14,3 +14,10 @@ router.add_url_rule("/contas/<int:id_conta>/depositar", view_func=requer_autenti
 router.add_url_rule("/contas/<int:id_conta>/sacar", view_func=requer_autenticacao(contas_controller.sacar), methods=["POST"])
 
 router.add_url_rule("/transferencias", view_func=requer_autenticacao(transferencias_controller.transferir), methods=["POST"])
+
+router.add_url_rule("/contas/<int:id_conta>/sincronizar", view_func=requer_autenticacao(contas_controller.sincronizar_operacao_pendente), methods=["POST"])
+
+router.add_url_rule("/bully/eleicao", view_func=bully_controller.eleicao, methods=["POST"])
+router.add_url_rule("/bully/coordenador", view_func=bully_controller.coordenador, methods=["POST"])
+router.add_url_rule("/bully/lider", view_func=bully_controller.lider, methods=["GET"])
+router.add_url_rule("/bully/eleicao/forcar", view_func=requer_autenticacao(bully_controller.forcar_eleicao), methods=["POST"])

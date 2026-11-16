@@ -32,8 +32,12 @@ def _assinatura(corpo):
     return hmac.new(config.SEGREDO_MENSAGENS.encode(), texto, hashlib.sha256).hexdigest()
 
 
+def envelope_assinado(corpo):
+    return {"corpo": corpo, "assinatura": _assinatura(corpo)}
+
+
 def _envelope(corpo):
-    return json.dumps({"corpo": corpo, "assinatura": _assinatura(corpo)}).encode()
+    return json.dumps(envelope_assinado(corpo)).encode()
 
 
 def verificar(envelope):
@@ -144,6 +148,7 @@ def iniciar_publicador_eventos(eventos_locais, caminho_cursor):
 
 
 def _consumir(declarar, ao_receber_mensagem):
+    avisou = False
     while True:
         try:
             conexao = _conectar()
@@ -163,9 +168,12 @@ def _consumir(declarar, ao_receber_mensagem):
 
             canal.basic_consume(fila, callback)
             print(f"[mensageria] consumindo {fila}")
+            avisou = False
             canal.start_consuming()
         except Exception as erro:
-            print(f"[mensageria] consumidor reconectando: {erro}")
+            if not avisou:
+                print(f"[mensageria] broker indisponivel ({type(erro).__name__}), tentando de novo a cada 3 s")
+                avisou = True
             time.sleep(3)
 
 

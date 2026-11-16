@@ -13,6 +13,7 @@ import config
 from controllers.transferencias_controller import processar_credito_remoto, reenviar_pendentes
 from routes import router
 from services import mensageria
+from services.bully import ServicoBully
 from services.event_log import DATA_DIR, RegistroEventos
 from services.persistencia import TravaPersistente
 from services.vector_clock import RelogioVetorial
@@ -44,6 +45,7 @@ estado = {
 }
 estado["trava"] = TravaPersistente(estado, os.path.join(DATA_DIR, f"estado-agencia-{id_agencia}.json"), persistencia)
 estado["trava"].carregar()
+estado["bully"] = ServicoBully(id_agencia, estado["relogio"], estado["registro"], estado["trava"])
 app.config["ESTADO"] = estado
 app.register_blueprint(router)
 
@@ -55,6 +57,7 @@ if __name__ == "__main__":
         os.path.join(DATA_DIR, f"auditoria-cursor-agencia-{id_agencia}.txt"),
     )
     threading.Thread(target=reenviar_pendentes, args=(estado,), daemon=True).start()
+    estado["bully"].iniciar()
     situacao = "ligada" if persistencia else "desligada"
     print(f"[Agência {id_agencia}] persistência {situacao}, ouvindo na porta {porta}")
     app.run(port=porta)
